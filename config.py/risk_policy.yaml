@@ -1,0 +1,28 @@
+# Aqarcom risk-points policy
+#
+# This is the transparent, auditable business-rule policy used to generate
+# TRAINING LABELS for the Random Forest classifier. It is not the model
+# itself. Property/legal signals intentionally carry more weight than JOFS
+# account-context signals -- financial context alone should never push a
+# case into "high" risk by itself.
+#
+# Adjust these values to tune sensitivity; the code in
+# src/data_generator.py reads this file, it does not hardcode these numbers.
+
+points:
+  zoning_mismatch: 3
+  title_seller_mismatch: 4
+  foreign_buyer_missing_docs: 2
+  missing_required_doc_per_item: 1   # multiplied by missing_required_docs_count
+  account_status_not_active: 1
+  debit_locked: 1
+  low_or_negative_balance_band: 1
+
+thresholds:
+  low_max: 1        # 0-1 points -> low
+  medium_max: 4     # 2-4 points -> medium
+  # 5+ points -> high
+
+noise:
+  enabled: true
+  flip_probability: 0.03   # small, documented noise so the dataset isn't perfectly deterministic
