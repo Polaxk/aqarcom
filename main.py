@@ -3,13 +3,18 @@ from src.extractor import extract_features
 from src.rules_engine import evaluate_risk
 from src.narration import generate_report
 
-
+from pathlib import Path
 def main():
-    sample_file = r"C:\pythonFiles\fintech\aqarcom\Attachment N1 - Sample Loan Agreement.pdf"
+    
 
+    # Dynamically gets the exact directory where main.py is located
+    BASE_DIR = Path(__file__).resolve().parent
+
+    # Automatically points to the PDF sitting right next to main.py
+    pdf_path = BASE_DIR / "Attachment N1 - Sample Loan Agreement.pdf"
     try:
         # 1. Ingest the PDF.
-        raw_text = ingest_pdf(sample_file)
+        raw_text = ingest_pdf(pdf_path)
         print("PDF ingestion successful")
         print(f"Extracted {len(raw_text)} characters\n")
 
@@ -38,7 +43,7 @@ def main():
         print(final_report)
 
     except FileNotFoundError:
-        print(f"Pipeline failed: PDF file not found:\n{sample_file}")
+        print(f"Pipeline failed: PDF file not found:\n{pdf_path}")
 
     except Exception as error:
         print(f"Pipeline failed: {type(error).__name__}: {error}")
