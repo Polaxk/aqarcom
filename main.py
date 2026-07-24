@@ -1,17 +1,16 @@
+import json
+from pathlib import Path
+
 from src.ingestion import ingest_pdf
 from src.extractor import extract_features
 from src.rules_engine import evaluate_risk
 from src.narration import generate_report
 
-from pathlib import Path
+
 def main():
-    
-
-    # Dynamically gets the exact directory where main.py is located
     BASE_DIR = Path(__file__).resolve().parent
+    pdf_path = BASE_DIR / "reg2.pdf"
 
-    # Automatically points to the PDF sitting right next to main.py
-    pdf_path = BASE_DIR / "Attachment N1 - Sample Loan Agreement.pdf"
     try:
         # 1. Ingest the PDF.
         raw_text = ingest_pdf(pdf_path)
@@ -25,28 +24,26 @@ def main():
         print("--- Extracted Features ---")
         print(features.model_dump_json(indent=2))
 
-        # 3. Convert the Pydantic feature schema into a standard dictionary
-        #    for the deterministic policy-based risk engine.
+        # 3. Convert Pydantic schema to dictionary.
         feature_data = features.model_dump()
 
         # 4. Evaluate risk using config/risk_policy.yaml.
         evaluation = evaluate_risk(feature_data)
 
         print("\n--- Risk Evaluation JSON ---")
-        import json
         print(json.dumps(evaluation, indent=2))
 
-        # 5. Produce the deterministic, presentation-ready report.
+        # 5. Produce the final report.
         final_report = generate_report(evaluation)
 
         print("\n--- AQARCOM FINAL RISK REPORT ---")
         print(final_report)
 
-    except FileNotFoundError:
-        print(f"Pipeline failed: PDF file not found:\n{pdf_path}")
+    except FileNotFoundError as err:
+        print(f"\nPipeline failed: Missing File -> {err.filename}")
 
     except Exception as error:
-        print(f"Pipeline failed: {type(error).__name__}: {error}")
+        print(f"\nPipeline failed: {type(error).__name__}: {error}")
 
 
 if __name__ == "__main__":
