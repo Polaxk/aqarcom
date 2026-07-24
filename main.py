@@ -5,7 +5,7 @@ from src.narration import generate_report
 
 
 def main():
-    sample_file = r"C:\pythonFiles\fintech\Attachment N1 - Sample Loan Agreement.pdf"
+    sample_file = r"C:\pythonFiles\fintech\aqarcom\Attachment N1 - Sample Loan Agreement.pdf"
 
     try:
         # 1. Ingest the PDF.

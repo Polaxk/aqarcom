@@ -1,15 +1,27 @@
 import json
 import os
+import re
 
-from openai import OpenAI
+import openai
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
-import os
-from dotenv import load_dotenv
-
-load_dotenv()  # loads .env into environment variables
+# Load environment variables
+load_dotenv()
 
 API_KEY = os.getenv("NVIDIA_API_KEY")
+
+if not API_KEY:
+    raise RuntimeError(
+        "NVIDIA_API_KEY is missing. Add it to your .env file before running."
+    )
+
+# Single client instance initialization
+client = openai.OpenAI(
+    base_url="https://integrate.api.nvidia.com/v1",
+    api_key=API_KEY,
+)
+
 
 class ExtractedFeatures(BaseModel):
     case_id: str
@@ -36,10 +48,13 @@ class ExtractedFeatures(BaseModel):
     document_completeness_score: float = Field(ge=0, le=100)
 
 
-client = OpenAI(
-    base_url="https://integrate.api.nvidia.com/v1",
-    api_key=os.environ["NVIDIA_API_KEY"],
-)
+def _clean_json_response(content: str) -> str:
+    """Strips markdown code fences and whitespace from LLM JSON output."""
+    content = content.strip()
+    if content.startswith("```"):
+        content = re.sub(r"^```(?:json)?\s*", "", content)
+        content = re.sub(r"\s*```$", "", content)
+    return content.strip()
 
 
 def extract_features(raw_text: str) -> ExtractedFeatures:
@@ -99,37 +114,34 @@ SOURCE CASE TEXT:
 
     try:
         response = client.chat.completions.create(
-            model="z-ai/glm-5.2",
+            model="google/gemma-4-31b-it",
             messages=[
                 {
                     "role": "system",
-                    "content": "Return one valid JSON object only. Never include prose or markdown."
+                    "content": (
+                        "Return exactly one valid JSON object only. "
+                        "No markdown, code fences, explanations, or extra text."
+                    ),
                 },
                 {
                     "role": "user",
-                    "content": prompt
-                }
+                    "content": prompt,
+                },
             ],
             temperature=0,
             top_p=1,
             max_tokens=2048,
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "extracted_features",
-                    "strict": True,
-                    "schema": schema,
-                },
+            extra_body={
+                "chat_template_kwargs": {
+                    "enable_thinking": False
+                }
             },
         )
 
-        content = response.choices[0].message.content
-        return ExtractedFeatures.model_validate_json(content)
-
-    except KeyError as error:
-        raise RuntimeError(
-            "NVIDIA_API_KEY is missing. Set it before running main.py."
-        ) from error
+        raw_content = response.choices[0].message.content or ""
+        cleaned_json = _clean_json_response(raw_content)
+        
+        return ExtractedFeatures.model_validate_json(cleaned_json)
 
     except Exception as error:
         raise RuntimeError(
